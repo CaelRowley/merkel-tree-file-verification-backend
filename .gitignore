@@ -11,6 +11,8 @@
 !README.md
 !LICENSE
 
+!docker-compose.yml
+
 # !Makefile
 
 # ...even if they are in subdirectories
