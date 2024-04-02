@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
+	"os"
 )
 
 type Node struct {
@@ -29,6 +30,10 @@ func main() {
 
 	root := buildMerkelTree(leafHashes)
 	fmt.Println(root)
+
+	removeDir("files")
+	makeDir("files")
+	writeDummyFiles("files", 100)
 }
 
 func buildMerkelTree(hashes [][]byte) *Node {
@@ -74,4 +79,41 @@ func hashPair(left []byte, right []byte) []byte {
 	pair := append(left, right...)
 	hash := sha256.Sum256(pair)
 	return hash[:]
+}
+
+func removeDir(path string) {
+	err := os.RemoveAll(path)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func makeDir(path string) {
+	err := os.Mkdir(path, 0755)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func writeDummyFiles(path string, amount int) {
+	for i := 0; i < amount; i++ {
+		fileName := fmt.Sprintf("%d.txt", i)
+		fileContent := fmt.Sprintf("Hello %d", i)
+		writeFile(path, fileName, fileContent)
+	}
+}
+
+func writeFile(path string, name string, content string) {
+	file, err := os.Create(path + "/" + name)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(content)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
