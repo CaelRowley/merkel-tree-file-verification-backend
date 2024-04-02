@@ -28,7 +28,6 @@ func main() {
 	}
 
 	root := buildMerkelTree(leafHashes)
-
 	fmt.Println(root)
 }
 
@@ -52,6 +51,7 @@ func buildMerkelTree(hashes [][]byte) *Node {
 			left := currentLevel[i]
 			right := currentLevel[i+1]
 			hash := hashPair(left.Hash, right.Hash)
+
 			newNode := newNode(hash, left, right)
 			nextLevel = append(nextLevel, newNode)
 		}
