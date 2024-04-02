@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"log"
 	"os"
 	"sort"
+
+	"gitlab.com/CaelRowley/merkel-tree-file-verification-backend/app"
 )
 
 type Node struct {
@@ -16,9 +19,14 @@ type Node struct {
 
 func main() {
 	allHashes := getTestFileHashes()
-
 	root := buildMerkelTree(allHashes)
 	fmt.Println(root)
+
+	app := app.New()
+	err := app.Start(context.TODO())
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func buildMerkelTree(hashes [][]byte) *Node {
@@ -142,7 +150,7 @@ func getTestFileHashes() [][]byte {
 		allFiles = append(allFiles, files...)
 	}
 
-	sort.Slice(allFiles, func(i, j int) bool {
+	sort.Slice(allFiles, func(i int, j int) bool {
 		return allFiles[i].Name() < allFiles[j].Name()
 	})
 
