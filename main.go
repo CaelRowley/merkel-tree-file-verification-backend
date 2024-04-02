@@ -3,7 +3,9 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
+	"log"
 	"os"
+	"sort"
 )
 
 type Node struct {
@@ -13,27 +15,10 @@ type Node struct {
 }
 
 func main() {
-	leafData := []string{
-		"hash1",
-		"hash2",
-		"hash3",
-		"hash4",
-		"hash5",
-	}
+	allHashes := getTestFileHashes()
 
-	var leafHashes [][]byte
-
-	for _, leaf := range leafData {
-		hash := sha256.Sum256([]byte(leaf))
-		leafHashes = append(leafHashes, hash[:])
-	}
-
-	root := buildMerkelTree(leafHashes)
+	root := buildMerkelTree(allHashes)
 	fmt.Println(root)
-
-	removeDir("files")
-	makeDir("files")
-	writeDummyFiles("files", 100)
 }
 
 func buildMerkelTree(hashes [][]byte) *Node {
@@ -116,4 +101,59 @@ func writeFile(path string, name string, content string) {
 		fmt.Println(err)
 		return
 	}
+}
+
+func getFileHash(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	hash := sha256.Sum256([]byte(data))
+	return hash[:], nil
+}
+
+func getTestFileHashes() [][]byte {
+	path := "files"
+	removeDir(path)
+	makeDir(path)
+	writeDummyFiles(path, 1000)
+
+	pageSize := 1024
+	dir, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dir.Close()
+
+	var allFiles []os.DirEntry
+	for {
+		files, err := dir.ReadDir(pageSize)
+		if err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			log.Fatal(err)
+		}
+
+		if len(files) == 0 {
+			break
+		}
+
+		allFiles = append(allFiles, files...)
+	}
+
+	sort.Slice(allFiles, func(i, j int) bool {
+		return allFiles[i].Name() < allFiles[j].Name()
+	})
+
+	var allHashes [][]byte
+	for _, file := range allFiles {
+		fileHash, err := getFileHash(path + "/" + file.Name())
+		if err != nil {
+			log.Fatal(err)
+		}
+		allHashes = append(allHashes, fileHash)
+	}
+
+	return allHashes
 }
