@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -48,21 +49,71 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	fmt.Println(copyCount)
 
 	root := merkletree.BuildTree(fileHashes)
 	merkletree.AddTree(merkletree.MerkleTree{ID: batchId, Root: root})
-
-	fmt.Println(copyCount)
 }
 
 func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
-	idParam := chi.URLParam(r, "id")
-	uuid, err := uuid.Parse(idParam)
+	id := chi.URLParam(r, "id")
+
+	query := `SELECT batch_id, name, file FROM files WHERE id = $1`
+	var batchId uuid.UUID
+	var fileName string
+	var fileData []byte
+
+	err := h.DB.QueryRow(context.Background(), query, id).Scan(&batchId, &fileName, &fileData)
+	if err == pgx.ErrNoRows {
+		fmt.Println("No file found with id:", id)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// err := os.WriteFile(fileName, fileData, 0644)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	return
+	// }
+
+	contentType := http.DetectContentType(fileData)
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(fileData)
+}
+
+func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	query := `SELECT batch_id, name, file FROM files WHERE id = $1`
+	var batchId uuid.UUID
+	var fileName string
+	var fileData []byte
+
+	err := h.DB.QueryRow(context.Background(), query, id).Scan(&batchId, &fileName, &fileData)
+	if err == pgx.ErrNoRows {
+		fmt.Println("No file found with id:", id)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	tree := merkletree.GetTree(batchId)
+
+	proof := map[string]interface{}{
+		"Tree": tree,
+	}
+
+	jsonData, err := json.Marshal(proof)
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	tree := merkletree.GetTree(uuid)
-	fmt.Println(tree)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
 }
