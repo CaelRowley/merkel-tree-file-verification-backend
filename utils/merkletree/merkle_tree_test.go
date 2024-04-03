@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestBuildMerkleTree(t *testing.T) {
+func TestBuildTree(t *testing.T) {
 	leafData := []string{
 		"hash1",
 		"hash2",
@@ -23,7 +23,7 @@ func TestBuildMerkleTree(t *testing.T) {
 		leafHashes = append(leafHashes, hash[:])
 	}
 
-	root := BuildMerkleTree(leafHashes)
+	root := BuildTree(leafHashes)
 	got := hex.EncodeToString(root.Hash[:])
 	want := "1726c9d7c9f5585c6657edb9f5de6ee2f14c447d2fb80c9083a2572857702912"
 

@@ -2,7 +2,16 @@ package merkletree
 
 import (
 	"crypto/sha256"
+
+	"github.com/google/uuid"
 )
+
+var Trees []MerkleTree
+
+type MerkleTree struct {
+	ID   uuid.UUID
+	Root *Node
+}
 
 type Node struct {
 	Hash  []byte
@@ -10,7 +19,7 @@ type Node struct {
 	Right *Node
 }
 
-func BuildMerkleTree(hashes [][]byte) *Node {
+func BuildTree(hashes [][]byte) *Node {
 	var currentLevel []*Node
 
 	for _, hash := range hashes {
@@ -39,6 +48,10 @@ func BuildMerkleTree(hashes [][]byte) *Node {
 	}
 
 	return currentLevel[0]
+}
+
+func AddTree(tree MerkleTree) {
+	Trees = append(Trees, tree)
 }
 
 func newNode(hash []byte, left *Node, right *Node) *Node {

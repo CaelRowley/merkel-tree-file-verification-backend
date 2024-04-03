@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -77,13 +76,8 @@ func (a *App) Start(ctx context.Context) error {
 }
 
 func (a *App) createTables() error {
-	id, err := uuid.NewV7()
-	if err != nil {
-		return err
-	}
-
 	dropTable := `DROP TABLE IF EXISTS files`
-	_, err = a.db.Exec(context.Background(), dropTable)
+	_, err := a.db.Exec(context.Background(), dropTable)
 	if err != nil {
 		return err
 	}
@@ -97,15 +91,6 @@ func (a *App) createTables() error {
 		)
 	`
 	_, err = a.db.Exec(context.Background(), createTableQuery)
-	if err != nil {
-		return err
-	}
-
-	insertFile := `
-		INSERT INTO files (batch_id, name, file)
-		VALUES ($1, $2, $3)
-	`
-	_, err = a.db.Exec(context.Background(), insertFile, id, "hello.txt", []byte{})
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ import (
 
 func main() {
 	allHashes := fileutil.GetTestFileHashes()
-	root := merkletree.BuildMerkleTree(allHashes)
+	root := merkletree.BuildTree(allHashes)
 	fmt.Println(root)
 
 	app := app.New()
