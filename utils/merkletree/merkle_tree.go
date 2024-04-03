@@ -54,6 +54,15 @@ func AddTree(tree MerkleTree) {
 	Trees = append(Trees, tree)
 }
 
+func GetTree(treeID uuid.UUID) *MerkleTree {
+	for _, tree := range Trees {
+		if tree.ID == treeID {
+			return &tree
+		}
+	}
+	return nil
+}
+
 func newNode(hash []byte, left *Node, right *Node) *Node {
 	return &Node{
 		Hash:  hash,

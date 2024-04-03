@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 	"gitlab.com/CaelRowley/merkle-tree-file-verification-backend/utils/fileutil"
+	"gitlab.com/CaelRowley/merkle-tree-file-verification-backend/utils/merkletree"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -24,25 +26,43 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var rows [][]interface{}
+
 	files := fileutil.GetFiles()
 
+	var fileHashes [][]byte
 	for _, file := range files {
-		insertFile := `
-			INSERT INTO files (batch_id, name, file)
-			VALUES ($1, $2, $3)
-		`
-		_, err := h.DB.Exec(context.Background(), insertFile, batchId, file.Name, file.Data)
-		if err != nil {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		rows = append(rows, []interface{}{batchId, file.Name, file.Data})
+		fileHash := sha256.Sum256([]byte(file.Data))
+		fileHashes = append(fileHashes, fileHash[:])
 	}
 
+	copyCount, err := h.DB.CopyFrom(
+		context.Background(),
+		pgx.Identifier{"files"},
+		[]string{"batch_id", "name", "file"},
+		pgx.CopyFromRows(rows),
+	)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	root := merkletree.BuildTree(fileHashes)
+	merkletree.AddTree(merkletree.MerkleTree{ID: batchId, Root: root})
+
+	fmt.Println(copyCount)
 }
 
 func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	idParam := chi.URLParam(r, "id")
-	fmt.Println("Download file: ", idParam)
-	fmt.Println(h.DB)
+	uuid, err := uuid.Parse(idParam)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	tree := merkletree.GetTree(uuid)
+	fmt.Println(tree)
 }
