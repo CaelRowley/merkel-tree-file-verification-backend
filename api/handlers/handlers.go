@@ -5,16 +5,20 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/jackc/pgx/v5"
 )
 
-type Server struct {
+type Handler struct {
+	DB *pgx.Conn
 }
 
-func (s *Server) UploadFiles(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Upload files")
+	fmt.Println(h.DB)
 }
 
-func (s *Server) DownloadFile(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	idParam := chi.URLParam(r, "id")
 	fmt.Println("Download file: ", idParam)
+	fmt.Println(h.DB)
 }

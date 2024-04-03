@@ -1,4 +1,4 @@
-package routes
+package app
 
 import (
 	"net/http"
@@ -8,7 +8,7 @@ import (
 	"gitlab.com/CaelRowley/merkel-tree-file-verification-backend/api/handlers"
 )
 
-func LoadRouter() *chi.Mux {
+func (a *App) loadRouter() {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
@@ -18,13 +18,15 @@ func LoadRouter() *chi.Mux {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	router.Route("/files", loadOrderRoutes)
+	router.Route("/files", a.loadFileRoutes)
 
-	return router
+	a.router = router
 }
 
-func loadOrderRoutes(router chi.Router) {
-	handlers := &handlers.Server{}
+func (a *App) loadFileRoutes(router chi.Router) {
+	handlers := &handlers.Handler{
+		DB: a.db,
+	}
 
 	router.Post("/upload", handlers.UploadFiles)
 	router.Get("/download/{id}", handlers.DownloadFile)

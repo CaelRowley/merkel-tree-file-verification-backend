@@ -3,19 +3,29 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
-	"gitlab.com/CaelRowley/merkel-tree-file-verification-backend/api/routes"
+	"github.com/jackc/pgx/v5"
 )
 
 type App struct {
 	router http.Handler
+	db     *pgx.Conn
 }
 
 func New() *App {
-	app := &App{
-		router: routes.LoadRouter(),
+	conn, err := pgx.Connect(context.Background(), "postgresql://admin:admin@localhost:5432")
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	app := &App{
+		db: conn,
+	}
+
+	app.loadRouter()
 
 	return app
 }
@@ -26,10 +36,31 @@ func (a *App) Start(ctx context.Context) error {
 		Handler: a.router,
 	}
 
-	err := server.ListenAndServe()
-	if err != nil {
-		return fmt.Errorf("failed to start server: %w", err)
-	}
+	defer func() {
+		if err := a.db.Close(context.Background()); err != nil {
+			fmt.Println("failed to close db", err)
+		}
+	}()
 
-	return nil
+	fmt.Println("Starting server")
+
+	ch := make(chan error, 1)
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			ch <- fmt.Errorf("failed to start server: %w", err)
+		}
+		close(ch)
+	}()
+
+	select {
+	case err := <-ch:
+		return err
+	case <-ctx.Done():
+		timeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+
+		return server.Shutdown(timeout)
+	}
 }
