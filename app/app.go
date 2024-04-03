@@ -36,6 +36,16 @@ func (a *App) Start(ctx context.Context) error {
 		Handler: a.router,
 	}
 
+	err := a.db.Ping(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to db: %w", err)
+	}
+
+	err = a.createTables()
+	if err != nil {
+		return fmt.Errorf("failed to create table: %w", err)
+	}
+
 	defer func() {
 		if err := a.db.Close(context.Background()); err != nil {
 			fmt.Println("failed to close db", err)
@@ -63,4 +73,29 @@ func (a *App) Start(ctx context.Context) error {
 
 		return server.Shutdown(timeout)
 	}
+}
+
+func (a *App) createTables() error {
+	dropTable := `DROP TABLE IF EXISTS files`
+
+	createTableQuery := `
+		CREATE TABLE IF NOT EXISTS files (
+				id SERIAL PRIMARY KEY,
+				batch_id UUID NOT NULL,
+				name TEXT NOT NULL,
+				file BYTEA NOT NULL
+		)
+	`
+
+	_, err := a.db.Exec(context.Background(), dropTable)
+	if err != nil {
+		return err
+	}
+
+	_, err = a.db.Exec(context.Background(), createTableQuery)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
