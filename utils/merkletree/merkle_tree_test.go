@@ -1,4 +1,4 @@
-package main
+package merkletree
 
 import (
 	"crypto/sha256"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestBuildMerkelTree(t *testing.T) {
+func TestBuildMerkleTree(t *testing.T) {
 	leafData := []string{
 		"hash1",
 		"hash2",
@@ -23,7 +23,7 @@ func TestBuildMerkelTree(t *testing.T) {
 		leafHashes = append(leafHashes, hash[:])
 	}
 
-	root := buildMerkelTree(leafHashes)
+	root := BuildMerkleTree(leafHashes)
 	got := hex.EncodeToString(root.Hash[:])
 	want := "1726c9d7c9f5585c6657edb9f5de6ee2f14c447d2fb80c9083a2572857702912"
 

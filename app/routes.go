@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"gitlab.com/CaelRowley/merkel-tree-file-verification-backend/api/handlers"
+	"gitlab.com/CaelRowley/merkle-tree-file-verification-backend/api/handlers"
 )
 
 func (a *App) loadRouter() {
