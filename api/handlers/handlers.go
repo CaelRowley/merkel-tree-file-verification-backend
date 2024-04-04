@@ -20,6 +20,14 @@ type Handler struct {
 }
 
 func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var files []fileutil.File
+	err := decoder.Decode(&files)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	batchId, err := uuid.NewV7()
 	if err != nil {
 		fmt.Println(err)
@@ -28,10 +36,8 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rows [][]interface{}
-
-	files := fileutil.GetFiles()
-
 	var fileHashes [][]byte
+
 	for _, file := range files {
 		rows = append(rows, []interface{}{batchId, file.Name, file.Data})
 		fileHash := sha256.Sum256([]byte(file.Data))
@@ -49,7 +55,11 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	fmt.Println(copyCount)
+
+	if copyCount != int64(len(files)) {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	root := merkletree.BuildTree(fileHashes)
 	merkletree.AddTree(merkletree.MerkleTree{ID: batchId, Root: root})
@@ -69,13 +79,6 @@ func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	// err := os.WriteFile(fileName, fileData, 0644)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	return
-	// }
 
 	contentType := http.DetectContentType(fileData)
 	w.Header().Set("Content-Type", contentType)
@@ -102,8 +105,12 @@ func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 
 	tree := merkletree.GetTree(batchId)
 
-	proof := map[string]interface{}{
-		"Tree": tree,
+	fileHash := sha256.Sum256(fileData)
+	proof, err := merkletree.CreateMerkleProof(tree.Root, fileHash[:])
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	jsonData, err := json.Marshal(proof)
