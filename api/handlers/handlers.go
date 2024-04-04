@@ -89,8 +89,16 @@ func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteAllFiles(w http.ResponseWriter, r *http.Request) {
-	query := `DELETE FROM files`
+	query := `TRUNCATE TABLE files`
 	_, err := h.DB.Exec(context.Background(), query)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	query = `ALTER SEQUENCE files_id_seq RESTART WITH 1`
+	_, err = h.DB.Exec(context.Background(), query)
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
