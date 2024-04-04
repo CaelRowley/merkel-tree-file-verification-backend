@@ -1,7 +1,9 @@
 package merkletree
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -17,6 +19,13 @@ type Node struct {
 	Hash  []byte
 	Left  *Node
 	Right *Node
+}
+
+type MerkleProof []ProofSibling
+
+type ProofSibling struct {
+	Hash   []byte
+	IsLeft bool
 }
 
 func BuildTree(hashes [][]byte) *Node {
@@ -61,6 +70,63 @@ func GetTree(treeID uuid.UUID) *MerkleTree {
 		}
 	}
 	return nil
+}
+
+func CreateMerkleProof(root *Node, hash []byte) (MerkleProof, error) {
+	var proof MerkleProof
+
+	var findHash func(node *Node) bool
+	findHash = func(node *Node) bool {
+		if node == nil {
+			return false
+		}
+
+		if node.Left == nil && node.Right == nil {
+			return bytes.Equal(node.Hash, hash)
+		}
+
+		leftContainsHash := findHash(node.Left)
+		if leftContainsHash {
+			sibling := ProofSibling{
+				Hash:   node.Right.Hash,
+				IsLeft: false,
+			}
+			proof = append(proof, sibling)
+			return true
+		}
+
+		rightContainsHash := findHash(node.Right)
+		if rightContainsHash {
+			sibling := ProofSibling{
+				Hash:   node.Left.Hash,
+				IsLeft: true,
+			}
+			proof = append(proof, sibling)
+			return true
+		}
+
+		return false
+	}
+
+	hashFound := findHash(root)
+	if !hashFound {
+		return nil, fmt.Errorf("hash not found in the Merkle tree")
+	}
+
+	return proof, nil
+}
+
+func VerifyMerkleProof(rootHash []byte, hash []byte, proof MerkleProof) bool {
+	currentHash := hash
+	for _, sibling := range proof {
+		if sibling.IsLeft {
+			currentHash = hashPair(sibling.Hash, currentHash)
+		} else {
+			currentHash = hashPair(currentHash, sibling.Hash)
+		}
+	}
+
+	return bytes.Equal(currentHash, rootHash)
 }
 
 func newNode(hash []byte, left *Node, right *Node) *Node {
