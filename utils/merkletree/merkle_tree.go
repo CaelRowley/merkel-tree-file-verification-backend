@@ -59,8 +59,18 @@ func BuildTree(hashes [][]byte) *Node {
 	return currentLevel[0]
 }
 
-func AddTree(tree MerkleTree) {
-	Trees = append(Trees, tree)
+func AddTree(newTree MerkleTree) {
+	Trees = append(Trees, newTree)
+}
+
+func UpdateTree(newTree MerkleTree) bool {
+	for i, tree := range Trees {
+		if tree.ID == newTree.ID {
+			Trees[i] = newTree
+			return true
+		}
+	}
+	return false
 }
 
 func GetTree(treeID uuid.UUID) *MerkleTree {
@@ -72,9 +82,10 @@ func GetTree(treeID uuid.UUID) *MerkleTree {
 	return nil
 }
 
-func CreateMerkleProof(root *Node, hash []byte) (MerkleProof, error) {
+func CreateMerkleProof(root *Node, hash []byte, isMalicious bool) (MerkleProof, error) {
 	var proof MerkleProof
 
+	foundMaliciousHash := false
 	var findHash func(node *Node) bool
 	findHash = func(node *Node) bool {
 		if node == nil {
@@ -82,6 +93,10 @@ func CreateMerkleProof(root *Node, hash []byte) (MerkleProof, error) {
 		}
 
 		if node.Left == nil && node.Right == nil {
+			if isMalicious && !foundMaliciousHash {
+				foundMaliciousHash = true
+				return true
+			}
 			return bytes.Equal(node.Hash, hash)
 		}
 

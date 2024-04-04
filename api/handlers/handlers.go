@@ -124,7 +124,7 @@ func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 	tree := merkletree.GetTree(batchId)
 
 	fileHash := sha256.Sum256(fileData)
-	proof, err := merkletree.CreateMerkleProof(tree.Root, fileHash[:])
+	proof, err := merkletree.CreateMerkleProof(tree.Root, fileHash[:], true)
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -141,4 +141,72 @@ func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
+}
+
+func (h *Handler) CorruptFile(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	decoder := json.NewDecoder(r.Body)
+	var file []byte
+	err := decoder.Decode(&file)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	query := `SELECT batch_id FROM files WHERE id = $1`
+	var batchId uuid.UUID
+
+	err = h.DB.QueryRow(context.Background(), query, id).Scan(&batchId)
+	if err == pgx.ErrNoRows {
+		fmt.Println("No file found with id:", id)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	_, err = h.DB.Exec(context.Background(), "UPDATE files SET file = $1 WHERE id = $2", file, id)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// If the server was genuine it would rebuild the Merkle tree with the new file
+	// query = `SELECT file FROM files`
+
+	// rows, err := h.DB.Query(context.Background(), query)
+	// if err == pgx.ErrNoRows {
+	// 	fmt.Println("No file found with id:", id)
+	// 	w.WriteHeader(http.StatusNotFound)
+	// 	return
+	// }
+
+	// defer rows.Close()
+
+	// var files [][]byte
+	// for rows.Next() {
+	// 	var file []byte
+	// 	err := rows.Scan(&file)
+	// 	if err != nil {
+	// 		w.WriteHeader(http.StatusBadRequest)
+	// 		return
+	// 	}
+	// 	files = append(files, file)
+	// }
+
+	// if err := rows.Err(); err != nil {
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	return
+	// }
+
+	// var fileHashes [][]byte
+
+	// for _, file := range files {
+	// 	fileHash := sha256.Sum256([]byte(file))
+	// 	fileHashes = append(fileHashes, fileHash[:])
+	// }
+
+	// root := merkletree.BuildTree(fileHashes)
+	// merkletree.UpdateTree(merkletree.MerkleTree{ID: batchId, Root: root})
+
+	w.WriteHeader(http.StatusOK)
 }
