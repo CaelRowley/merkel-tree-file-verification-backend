@@ -29,6 +29,7 @@ func (a *App) loadFileRoutes(router chi.Router) {
 	}
 
 	router.Post("/upload", handlers.UploadFiles)
+	router.Post("/delete-all", handlers.DeleteAllFiles)
 	router.Get("/download/{id}", handlers.DownloadFile)
 	router.Get("/get-proof/{id}", handlers.GetFileProof)
 }

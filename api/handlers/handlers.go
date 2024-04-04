@@ -88,6 +88,16 @@ func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	w.Write(fileData)
 }
 
+func (h *Handler) DeleteAllFiles(w http.ResponseWriter, r *http.Request) {
+	query := `DELETE FROM files`
+	_, err := h.DB.Exec(context.Background(), query)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
 func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
