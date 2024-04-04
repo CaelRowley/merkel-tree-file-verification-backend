@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -15,8 +16,20 @@ type App struct {
 	db     *pgx.Conn
 }
 
+var (
+	dbURL = os.Getenv("DB_URL")
+	port  = os.Getenv("PORT")
+)
+
 func New() *App {
-	conn, err := pgx.Connect(context.Background(), "postgresql://admin:admin@localhost:5432")
+	if dbURL == "" {
+		dbURL = "postgresql://admin:admin@localhost:5432"
+	}
+	if port == "" {
+		port = "8080"
+	}
+
+	conn, err := pgx.Connect(context.Background(), dbURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,7 +45,7 @@ func New() *App {
 
 func (a *App) Start(ctx context.Context) error {
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + port,
 		Handler: a.router,
 	}
 
