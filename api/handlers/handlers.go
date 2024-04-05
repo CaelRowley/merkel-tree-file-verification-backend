@@ -127,7 +127,7 @@ func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 
 	realHash := sha256.Sum256(fileData)
 
-	if bytes.Equal(realHash[:], falseHash) {
+	if !bytes.Equal(realHash[:], falseHash) {
 		fmt.Println("Server is acting maliciously and giving a false proof")
 	}
 
