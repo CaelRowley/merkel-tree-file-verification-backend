@@ -54,6 +54,7 @@ func (a *App) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to connect to db: %w", err)
 	}
 
+	// TODO: setup migrations for table creation
 	err = a.createTables()
 	if err != nil {
 		return fmt.Errorf("failed to create table: %w", err)
@@ -100,7 +101,8 @@ func (a *App) createTables() error {
 				id SERIAL PRIMARY KEY,
 				batch_id UUID NOT NULL,
 				name TEXT NOT NULL,
-				file BYTEA NOT NULL
+				file BYTEA NOT NULL,
+				false_hash BYTEA NOT NULL
 		)
 	`
 	_, err = a.db.Exec(context.Background(), createTableQuery)

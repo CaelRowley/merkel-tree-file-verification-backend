@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -39,15 +40,15 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 	var fileHashes [][]byte
 
 	for _, file := range files {
-		rows = append(rows, []interface{}{batchId, file.Name, file.Data})
 		fileHash := sha256.Sum256([]byte(file.Data))
 		fileHashes = append(fileHashes, fileHash[:])
+		rows = append(rows, []interface{}{batchId, file.Name, file.Data, fileHash[:]})
 	}
 
 	copyCount, err := h.DB.CopyFrom(
 		context.Background(),
 		pgx.Identifier{"files"},
-		[]string{"batch_id", "name", "file"},
+		[]string{"batch_id", "name", "file", "false_hash"},
 		pgx.CopyFromRows(rows),
 	)
 	if err != nil {
@@ -109,12 +110,13 @@ func (h *Handler) DeleteAllFiles(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	query := `SELECT batch_id, name, file FROM files WHERE id = $1`
+	query := `SELECT batch_id, name, file, false_hash FROM files WHERE id = $1`
 	var batchId uuid.UUID
 	var fileName string
 	var fileData []byte
+	var falseHash []byte
 
-	err := h.DB.QueryRow(context.Background(), query, id).Scan(&batchId, &fileName, &fileData)
+	err := h.DB.QueryRow(context.Background(), query, id).Scan(&batchId, &fileName, &fileData, &falseHash)
 	if err == pgx.ErrNoRows {
 		fmt.Println("No file found with id:", id)
 		w.WriteHeader(http.StatusNotFound)
@@ -123,8 +125,13 @@ func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 
 	tree := merkletree.GetTree(batchId)
 
-	fileHash := sha256.Sum256(fileData)
-	proof, err := merkletree.CreateMerkleProof(tree.Root, fileHash[:], true)
+	realHash := sha256.Sum256(fileData)
+
+	if bytes.Equal(realHash[:], falseHash) {
+		fmt.Println("Server is acting maliciously and giving a false proof")
+	}
+
+	proof, err := merkletree.CreateMerkleProof(tree.Root, falseHash)
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -163,6 +170,7 @@ func (h *Handler) CorruptFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Update file without changing the hash, for a malicious server
 	_, err = h.DB.Exec(context.Background(), "UPDATE files SET file = $1 WHERE id = $2", file, id)
 	if err != nil {
 		fmt.Println(err)

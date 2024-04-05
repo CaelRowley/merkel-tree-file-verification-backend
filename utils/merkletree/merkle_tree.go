@@ -82,7 +82,7 @@ func GetTree(treeID uuid.UUID) *MerkleTree {
 	return nil
 }
 
-func CreateMerkleProof(root *Node, hash []byte, isMalicious bool) (MerkleProof, error) {
+func CreateMerkleProof(root *Node, hash []byte) (MerkleProof, error) {
 	var proof MerkleProof
 
 	var findHash func(node *Node) bool
@@ -119,7 +119,7 @@ func CreateMerkleProof(root *Node, hash []byte, isMalicious bool) (MerkleProof, 
 	}
 
 	hashFound := findHash(root)
-	if !hashFound && !isMalicious {
+	if !hashFound {
 		return nil, fmt.Errorf("hash not found in the Merkle tree")
 	}
 
