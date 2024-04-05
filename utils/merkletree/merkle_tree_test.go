@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"reflect"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestBuildTree(t *testing.T) {
@@ -29,6 +31,168 @@ func TestBuildTree(t *testing.T) {
 
 	if got != want {
 		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestAddTree(t *testing.T) {
+	batchId, err := uuid.Parse("a1592e96-ff51-4189-b8d0-17d4010ab8d2")
+	if err != nil {
+		t.Errorf("error geting batchId: %v", err)
+	}
+	leafData := []string{
+		"hash1",
+		"hash2",
+		"hash3",
+		"hash4",
+		"hash5",
+	}
+	var leafHashes [][]byte
+	for _, leaf := range leafData {
+		hash := sha256.Sum256([]byte(leaf))
+		leafHashes = append(leafHashes, hash[:])
+	}
+	root := BuildTree(leafHashes)
+	newTree := MerkleTree{ID: batchId, Root: root}
+
+	AddTree(newTree)
+
+	got := Trees
+	want := []MerkleTree{newTree}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestGetTree(t *testing.T) {
+	batchId, err := uuid.Parse("a1592e96-ff51-4189-b8d0-17d4010ab8d2")
+	if err != nil {
+		t.Errorf("error geting batchId: %v", err)
+	}
+
+	leafData := []string{
+		"hash1",
+		"hash2",
+		"hash3",
+		"hash4",
+		"hash5",
+	}
+	var leafHashes [][]byte
+	for _, leaf := range leafData {
+		hash := sha256.Sum256([]byte(leaf))
+		leafHashes = append(leafHashes, hash[:])
+	}
+	root := BuildTree(leafHashes)
+	newTree := MerkleTree{ID: batchId, Root: root}
+
+	AddTree(newTree)
+
+	got := GetTree(newTree.ID).Root.Hash
+	want := newTree.Root.Hash
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestUpdateTree(t *testing.T) {
+	batchId, err := uuid.Parse("a1592e96-ff51-4189-b8d0-17d4010ab8d2")
+	if err != nil {
+		t.Errorf("error geting batchId: %v", err)
+	}
+
+	leafData := []string{
+		"hash1",
+		"hash2",
+		"hash3",
+	}
+	var leafHashes [][]byte
+	for _, leaf := range leafData {
+		hash := sha256.Sum256([]byte(leaf))
+		leafHashes = append(leafHashes, hash[:])
+	}
+	root := BuildTree(leafHashes)
+	newTree := MerkleTree{ID: batchId, Root: root}
+
+	AddTree(newTree)
+
+	leafData = []string{
+		"hash3",
+		"hash4",
+		"hash5",
+	}
+	leafHashes = [][]byte{}
+	for _, leaf := range leafData {
+		hash := sha256.Sum256([]byte(leaf))
+		leafHashes = append(leafHashes, hash[:])
+	}
+	root = BuildTree(leafHashes)
+	newTree = MerkleTree{ID: batchId, Root: root}
+
+	UpdateTree(newTree)
+
+	got := GetTree(batchId).Root.Hash
+	want := newTree.Root.Hash
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestCreateMerkleProof(t *testing.T) {
+	leafData := []string{
+		"hash1",
+		"hash2",
+		"hash3",
+	}
+	var leafHashes [][]byte
+	for _, leaf := range leafData {
+		hash := sha256.Sum256([]byte(leaf))
+		leafHashes = append(leafHashes, hash[:])
+	}
+	root := BuildTree(leafHashes)
+
+	leafHash := sha256.Sum256([]byte("hash3"))
+	proof, err := CreateMerkleProof(root, leafHash[:])
+	if err != nil {
+		t.Errorf("returned unexpected error: %v", err)
+	}
+	if len(proof) != 2 {
+		t.Errorf("expected proof length to be 2, got %d", len(proof))
+	}
+
+	invalidHash := []byte("invalidhash")
+	_, err = CreateMerkleProof(root, invalidHash)
+	if err == nil {
+		t.Error("expected an error for invalid hash")
+	}
+}
+
+func TestVerifyMerkleProof(t *testing.T) {
+	leafData := []string{
+		"hash1",
+		"hash2",
+		"hash3",
+	}
+	var leafHashes [][]byte
+	for _, leaf := range leafData {
+		hash := sha256.Sum256([]byte(leaf))
+		leafHashes = append(leafHashes, hash[:])
+	}
+	root := BuildTree(leafHashes)
+
+	leafHash := sha256.Sum256([]byte("hash3"))
+	proof, _ := CreateMerkleProof(root, leafHash[:])
+
+	valid := VerifyMerkleProof(root.Hash, leafHash[:], proof)
+	if !valid {
+		t.Error("Eepected true for valid hash")
+	}
+
+	proof[0].Hash = []byte("invalidHash")
+	valid = VerifyMerkleProof(root.Hash, leafHash[:], proof)
+	if valid {
+		t.Error("expected false for invalid hash")
 	}
 }
 

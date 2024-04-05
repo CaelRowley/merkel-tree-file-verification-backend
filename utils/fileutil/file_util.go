@@ -13,10 +13,7 @@ type File struct {
 	Data []byte
 }
 
-func GetTestFileHashes() [][]byte {
-	path := "files"
-	removeDir(path)
-	makeDir(path)
+func GetTestFileHashes(path string) [][]byte {
 	writeDummyFiles(path, 1000)
 
 	pageSize := 1024
@@ -113,10 +110,7 @@ func GetFile(path string) ([]byte, error) {
 	return data, nil
 }
 
-func GetFiles() []File {
-	path := "files"
-	removeDir(path)
-	makeDir(path)
+func GetFiles(path string) []File {
 	writeDummyFiles(path, 1000)
 
 	pageSize := 1024

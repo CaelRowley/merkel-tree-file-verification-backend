@@ -63,6 +63,15 @@ func AddTree(newTree MerkleTree) {
 	Trees = append(Trees, newTree)
 }
 
+func GetTree(treeID uuid.UUID) *MerkleTree {
+	for _, tree := range Trees {
+		if tree.ID == treeID {
+			return &tree
+		}
+	}
+	return nil
+}
+
 func UpdateTree(newTree MerkleTree) bool {
 	for i, tree := range Trees {
 		if tree.ID == newTree.ID {
@@ -71,15 +80,6 @@ func UpdateTree(newTree MerkleTree) bool {
 		}
 	}
 	return false
-}
-
-func GetTree(treeID uuid.UUID) *MerkleTree {
-	for _, tree := range Trees {
-		if tree.ID == treeID {
-			return &tree
-		}
-	}
-	return nil
 }
 
 func CreateMerkleProof(root *Node, hash []byte) (MerkleProof, error) {
