@@ -21,18 +21,16 @@ type Handler struct {
 }
 
 func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var files []fileutil.File
-	err := decoder.Decode(&files)
+	batchId, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	batchId, err := uuid.NewV7()
+	decoder := json.NewDecoder(r.Body)
+	var files []fileutil.File
+	err = decoder.Decode(&files)
 	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -62,8 +60,12 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	root := merkletree.BuildTree(fileHashes)
-	merkletree.AddTree(merkletree.MerkleTree{ID: batchId, Root: root})
+	err = h.RegenerateTree(batchId)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -180,17 +182,17 @@ func (h *Handler) CorruptFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If the server was genuine it would rebuild the Merkle tree with the new file
-	// err := h.RegenerateTree(w, r, id, batchId)
+	// err := h.RegenerateTree(batchId)
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) RegenerateTree(id string, batchId uuid.UUID) error {
-	query := `SELECT file FROM files`
+func (h *Handler) RegenerateTree(batchId uuid.UUID) error {
+	query := `SELECT file FROM files WHERE batch_id = $1`
 
-	rows, err := h.DB.Query(context.Background(), query)
+	rows, err := h.DB.Query(context.Background(), query, batchId)
 	if err == pgx.ErrNoRows {
-		fmt.Println("No file found with id:", id)
+		fmt.Println("No files found with batch_id:", batchId)
 		return err
 	}
 	defer rows.Close()

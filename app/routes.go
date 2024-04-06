@@ -28,7 +28,7 @@ func (a *App) loadFileRoutes(router chi.Router) {
 		DB: a.db,
 	}
 
-	router.Post("/upload", handlers.UploadFiles)
+	router.Post("/upload-batch/{id}", handlers.UploadFiles)
 	router.Post("/delete-all", handlers.DeleteAllFiles)
 	router.Get("/download/{id}", handlers.DownloadFile)
 	router.Get("/get-proof/{id}", handlers.GetFileProof)
