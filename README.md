@@ -37,7 +37,7 @@ The backend server exposes the following routes:
 
 ## Usage
 
-This backend is written to be used in conjuction with the [Client CLI Tool](https://gitlab.com/CaelRowley/merkle-tree-file-verification-client).
+This backend is written to be used by the CLI Tool [Merkle Tree File Verification Client](https://gitlab.com/CaelRowley/merkle-tree-file-verification-client).
 
 ## Database Table Structure
 
