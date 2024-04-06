@@ -26,6 +26,9 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	queryParams := r.URL.Query()
+	isBatchComplete := queryParams.Get("batch-complete")
+
 	decoder := json.NewDecoder(r.Body)
 	var files []fileutil.File
 	err = decoder.Decode(&files)
@@ -35,11 +38,9 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rows [][]interface{}
-	var fileHashes [][]byte
 
 	for _, file := range files {
 		fileHash := sha256.Sum256([]byte(file.Data))
-		fileHashes = append(fileHashes, fileHash[:])
 		rows = append(rows, []interface{}{batchId, file.Name, file.Data, fileHash[:]})
 	}
 
@@ -60,11 +61,13 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.RegenerateTree(batchId)
-	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if isBatchComplete == "true" {
+		err = h.RegenerateTree(batchId)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
