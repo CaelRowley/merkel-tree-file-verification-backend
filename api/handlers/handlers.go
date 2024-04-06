@@ -64,6 +64,8 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 
 	root := merkletree.BuildTree(fileHashes)
 	merkletree.AddTree(merkletree.MerkleTree{ID: batchId, Root: root})
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +86,6 @@ func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	contentType := http.DetectContentType(fileData)
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
-
 	w.WriteHeader(http.StatusOK)
 	w.Write(fileData)
 }
@@ -105,6 +106,8 @@ func (h *Handler) DeleteAllFiles(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
@@ -124,9 +127,7 @@ func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tree := merkletree.GetTree(batchId)
-
 	realHash := sha256.Sum256(fileData)
-
 	if !bytes.Equal(realHash[:], falseHash) {
 		fmt.Println("Server is acting maliciously and giving a false proof")
 	}
@@ -170,7 +171,7 @@ func (h *Handler) CorruptFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update file without changing the hash, for a malicious server
+	// Update file contnet without changing the hash, for a malicious server
 	_, err = h.DB.Exec(context.Background(), "UPDATE files SET file = $1 WHERE id = $2", file, id)
 	if err != nil {
 		fmt.Println(err)
@@ -179,42 +180,42 @@ func (h *Handler) CorruptFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If the server was genuine it would rebuild the Merkle tree with the new file
-	// query = `SELECT file FROM files`
-
-	// rows, err := h.DB.Query(context.Background(), query)
-	// if err == pgx.ErrNoRows {
-	// 	fmt.Println("No file found with id:", id)
-	// 	w.WriteHeader(http.StatusNotFound)
-	// 	return
-	// }
-
-	// defer rows.Close()
-
-	// var files [][]byte
-	// for rows.Next() {
-	// 	var file []byte
-	// 	err := rows.Scan(&file)
-	// 	if err != nil {
-	// 		w.WriteHeader(http.StatusBadRequest)
-	// 		return
-	// 	}
-	// 	files = append(files, file)
-	// }
-
-	// if err := rows.Err(); err != nil {
-	// 	w.WriteHeader(http.StatusBadRequest)
-	// 	return
-	// }
-
-	// var fileHashes [][]byte
-
-	// for _, file := range files {
-	// 	fileHash := sha256.Sum256([]byte(file))
-	// 	fileHashes = append(fileHashes, fileHash[:])
-	// }
-
-	// root := merkletree.BuildTree(fileHashes)
-	// merkletree.UpdateTree(merkletree.MerkleTree{ID: batchId, Root: root})
+	// err := h.RegenerateTree(w, r, id, batchId)
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) RegenerateTree(id string, batchId uuid.UUID) error {
+	query := `SELECT file FROM files`
+
+	rows, err := h.DB.Query(context.Background(), query)
+	if err == pgx.ErrNoRows {
+		fmt.Println("No file found with id:", id)
+		return err
+	}
+	defer rows.Close()
+
+	var files [][]byte
+	for rows.Next() {
+		var file []byte
+		err := rows.Scan(&file)
+		if err != nil {
+			return err
+		}
+		files = append(files, file)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	var fileHashes [][]byte
+	for _, file := range files {
+		fileHash := sha256.Sum256([]byte(file))
+		fileHashes = append(fileHashes, fileHash[:])
+	}
+
+	root := merkletree.BuildTree(fileHashes)
+	merkletree.UpdateTree(merkletree.MerkleTree{ID: batchId, Root: root})
+
+	return nil
 }
