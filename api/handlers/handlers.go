@@ -40,14 +40,13 @@ func (h *Handler) UploadFiles(w http.ResponseWriter, r *http.Request) {
 	var rows [][]interface{}
 
 	for _, file := range files {
-		fileHash := sha256.Sum256([]byte(file.Data))
-		rows = append(rows, []interface{}{batchId, file.Name, file.Data, fileHash[:]})
+		rows = append(rows, []interface{}{batchId, file.Name, file.Data})
 	}
 
 	copyCount, err := h.DB.CopyFrom(
 		context.Background(),
 		pgx.Identifier{"files"},
-		[]string{"batch_id", "name", "file", "false_hash"},
+		[]string{"batch_id", "name", "file"},
 		pgx.CopyFromRows(rows),
 	)
 	if err != nil {
@@ -118,13 +117,13 @@ func (h *Handler) DeleteAllFiles(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	query := `SELECT batch_id, name, file, false_hash FROM files WHERE id = $1`
+	query := `SELECT batch_id, name, file, original_hash FROM files WHERE id = $1`
 	var batchId uuid.UUID
 	var fileName string
 	var fileData []byte
-	var falseHash []byte
+	var originalHash []byte
 
-	err := h.DB.QueryRow(context.Background(), query, id).Scan(&batchId, &fileName, &fileData, &falseHash)
+	err := h.DB.QueryRow(context.Background(), query, id).Scan(&batchId, &fileName, &fileData, &originalHash)
 	if err == pgx.ErrNoRows {
 		fmt.Println("No file found with id:", id)
 		w.WriteHeader(http.StatusNotFound)
@@ -132,12 +131,14 @@ func (h *Handler) GetFileProof(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tree := merkletree.GetTree(batchId)
-	realHash := sha256.Sum256(fileData)
-	if !bytes.Equal(realHash[:], falseHash) {
+	fileHash := sha256.Sum256(fileData)
+
+	if originalHash != nil && !bytes.Equal(fileHash[:], originalHash) {
+		fileHash = [32]byte(originalHash)
 		fmt.Println("Server is acting maliciously and giving a false proof")
 	}
 
-	proof, err := merkletree.CreateMerkleProof(tree.Root, falseHash)
+	proof, err := merkletree.CreateMerkleProof(tree.Root, fileHash[:])
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -166,18 +167,22 @@ func (h *Handler) CorruptFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `SELECT batch_id FROM files WHERE id = $1`
+	query := `SELECT batch_id, name, file FROM files WHERE id = $1`
 	var batchId uuid.UUID
+	var fileName string
+	var fileData []byte
 
-	err = h.DB.QueryRow(context.Background(), query, id).Scan(&batchId)
+	err = h.DB.QueryRow(context.Background(), query, id).Scan(&batchId, &fileName, &fileData)
 	if err == pgx.ErrNoRows {
 		fmt.Println("No file found with id:", id)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	// Update file contnet without changing the hash, for a malicious server
-	_, err = h.DB.Exec(context.Background(), "UPDATE files SET file = $1 WHERE id = $2", file, id)
+	originalHash := sha256.Sum256(fileData)
+
+	// Update file content but store the hash of the original, for a malicious server
+	_, err = h.DB.Exec(context.Background(), "UPDATE files SET file = $1, original_hash = $2 WHERE id = $3", file, originalHash[:], id)
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusNotFound)

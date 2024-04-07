@@ -102,7 +102,7 @@ func (a *App) createTables() error {
 				batch_id UUID NOT NULL,
 				name TEXT NOT NULL,
 				file BYTEA NOT NULL,
-				false_hash BYTEA NOT NULL
+				original_hash BYTEA
 		)
 	`
 	_, err = a.db.Exec(context.Background(), createTableQuery)
