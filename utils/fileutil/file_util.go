@@ -40,10 +40,6 @@ func GetTestFileHashes(path string) [][]byte {
 		allFiles = append(allFiles, files...)
 	}
 
-	sort.Slice(allFiles, func(i int, j int) bool {
-		return allFiles[i].Name() < allFiles[j].Name()
-	})
-
 	var allHashes [][]byte
 	for _, file := range allFiles {
 		fileHash, err := GetFileHash(path + "/" + file.Name())
@@ -52,6 +48,10 @@ func GetTestFileHashes(path string) [][]byte {
 		}
 		allHashes = append(allHashes, fileHash)
 	}
+
+	sort.Slice(allHashes, func(i int, j int) bool {
+		return string(allHashes[i]) < string(allHashes[j])
+	})
 
 	return allHashes
 }
@@ -136,10 +136,6 @@ func GetFiles(path string) []File {
 
 		allDirs = append(allDirs, dirs...)
 	}
-
-	sort.Slice(allDirs, func(i int, j int) bool {
-		return allDirs[i].Name() < allDirs[j].Name()
-	})
 
 	var allFiles []File
 	for _, dir := range allDirs {

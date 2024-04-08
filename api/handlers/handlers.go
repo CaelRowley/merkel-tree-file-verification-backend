@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
@@ -196,7 +197,7 @@ func (h *Handler) CorruptFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) RegenerateTree(batchId uuid.UUID) error {
-	query := `SELECT file FROM files WHERE batch_id = $1`
+	query := `SELECT name, file FROM files WHERE batch_id = $1`
 
 	rows, err := h.DB.Query(context.Background(), query, batchId)
 	if err == pgx.ErrNoRows {
@@ -207,8 +208,9 @@ func (h *Handler) RegenerateTree(batchId uuid.UUID) error {
 
 	var files [][]byte
 	for rows.Next() {
+		var name string
 		var file []byte
-		err := rows.Scan(&file)
+		err := rows.Scan(&name, &file)
 		if err != nil {
 			return err
 		}
@@ -223,6 +225,10 @@ func (h *Handler) RegenerateTree(batchId uuid.UUID) error {
 		fileHash := sha256.Sum256([]byte(file))
 		fileHashes = append(fileHashes, fileHash[:])
 	}
+
+	sort.Slice(fileHashes, func(i int, j int) bool {
+		return string(fileHashes[i]) < string(fileHashes[j])
+	})
 
 	root := merkletree.BuildTree(fileHashes)
 	merkletree.UpdateTree(merkletree.MerkleTree{ID: batchId, Root: root})
