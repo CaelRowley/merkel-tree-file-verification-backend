@@ -9,9 +9,21 @@ This backend is written to be used in conjuction with the [Merkle Tree File Veri
 - [Docker](https://docs.docker.com/desktop/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 
+## Environment Variables
+
+- **DB_URL**
+  - This specifies the URL of the DB.
+  - Defaults to `postgresql://admin:admin@localhost:5432` (points to the default URL of the DB from this service).
+  - If you want to connect to a deployed DB, set `DB_URL` to the URL of your DB (must be a PostgreSQL DB):
+    ```bash
+    export DB_URL=postgres://db_user:db_password@db_postgres.db.com/db_name
+    ```
+
 ## Getting Started
 
-After cloning the repository, you can run the backend server and locally using Docker Compose:
+After cloning the repository, you can run the backend server and locally using Docker Compose.
+
+**Note** The backend runs on port `8080` and the DB on port `5432` so make sure those ports are free if running locally.
 
 **Step 1:** Build the Docker Images (if needed)
 
@@ -36,10 +48,6 @@ The backend server exposes the following routes:
 - **GET** `/files/get-proof/{id}`: Get a Merkle proof for a file from the database.
 - **POST** `/files/corrupt-file/{id}`: Simulate file corruption in the database by modifying a file and not the hash.
 
-## Usage
-
-This backend is written to be used by the CLI Tool [Merkle Tree File Verification Client](https://gitlab.com/CaelRowley/merkle-tree-file-verification-client).
-
 ## Database Table Structure
 
 The backend server utilizes a PostgreSQL database to store file metadata and content. Below is the structure of the `files` table used by the server:
@@ -58,5 +66,5 @@ The backend server utilizes a PostgreSQL database to store file metadata and con
 - **batch_id:** Files are uploaded in batches and this batch_id is used to group the files together in a single batch.
 - **name:** Original filename of the uploaded file.
 - **file:** Binary content (file data) of the uploaded file.
-- **original_hash:** This plays a crucial role in generating Merkle proofs for file integrity verification. By storing the hash of each file's content, the server or client can detect any modifications or tampering attempts on the file data. This field allows the server to simulate malicious activity (e.g., file corruption) by modifying the file content while keeping a reference to original unmodified file hash.
+- **original_hash:** This plays a crucial role in generating Merkle proofs for file integrity verification. By using the hash of each file's content, the server or client can detect any modifications or tampering attempts on the file data. This field allows the server to simulate malicious activity (e.g., file corruption) by modifying the file content while keeping a reference to original unmodified file hash.
 

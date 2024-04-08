@@ -18,15 +18,12 @@ type App struct {
 
 var (
 	dbURL = os.Getenv("DB_URL")
-	port  = os.Getenv("PORT")
+	port  = "8080"
 )
 
 func New() *App {
 	if dbURL == "" {
 		dbURL = "postgresql://admin:admin@localhost:5432"
-	}
-	if port == "" {
-		port = "8080"
 	}
 
 	conn, err := pgx.Connect(context.Background(), dbURL)
