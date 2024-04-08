@@ -227,7 +227,7 @@ func (h *Handler) RegenerateTree(batchId uuid.UUID) error {
 	}
 
 	sort.Slice(fileHashes, func(i int, j int) bool {
-		return string(fileHashes[i]) < string(fileHashes[j])
+		return bytes.Compare(fileHashes[i], fileHashes[j]) < 0
 	})
 
 	root := merkletree.BuildTree(fileHashes)

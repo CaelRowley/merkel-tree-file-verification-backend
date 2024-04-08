@@ -1,6 +1,7 @@
 package fileutil
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"log"
@@ -50,7 +51,7 @@ func GetTestFileHashes(path string) [][]byte {
 	}
 
 	sort.Slice(allHashes, func(i int, j int) bool {
-		return string(allHashes[i]) < string(allHashes[j])
+		return bytes.Compare(allHashes[i], allHashes[j]) < 0
 	})
 
 	return allHashes
