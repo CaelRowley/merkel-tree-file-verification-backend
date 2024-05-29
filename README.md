@@ -2,7 +2,7 @@
 
 A backend server for demonstrating the functionality of a Merkle tree for a file storage and integrity verification system. Built using Go and PostgreSQL. The server exposes endpoints for uploading, downloading and generating Merkle proofs to ensure file integrity.
 
-This backend is written to be used in conjuction with the [Merkle Tree File Verification Client](https://gitlab.com/CaelRowley/merkle-tree-file-verification-client).
+This backend is written to be used in conjuction with the [Merkle Tree File Verification Client](https://github.com/CaelRowley/merkle-tree-file-verification-client).
 
 ## Prerequisites
 
