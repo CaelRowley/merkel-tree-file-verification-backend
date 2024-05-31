@@ -11,8 +11,8 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
-	"gitlab.com/CaelRowley/merkle-tree-file-verification-backend/utils/fileutil"
-	"gitlab.com/CaelRowley/merkle-tree-file-verification-backend/utils/merkletree"
+	"gitlab.com/CaelRowley/merkle-tree-file-verification-backend/pkg/fileutil"
+	"gitlab.com/CaelRowley/merkle-tree-file-verification-backend/pkg/merkletree"
 
 	"github.com/jackc/pgx/v5"
 )

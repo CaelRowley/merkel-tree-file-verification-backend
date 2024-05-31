@@ -1,4 +1,4 @@
-package app
+package server
 
 import (
 	"context"
@@ -8,10 +8,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/jackc/pgx/v5"
+	"gitlab.com/CaelRowley/merkle-tree-file-verification-backend/pkg/handlers"
 )
 
-type App struct {
+type Server struct {
 	router http.Handler
 	db     *pgx.Conn
 }
@@ -21,7 +24,7 @@ var (
 	port  = "8080"
 )
 
-func New() *App {
+func New() *Server {
 	if dbURL == "" {
 		dbURL = "postgresql://admin:admin@localhost:5432"
 	}
@@ -31,34 +34,34 @@ func New() *App {
 		log.Fatal(err)
 	}
 
-	app := &App{
+	server := &Server{
 		db: conn,
 	}
 
-	app.loadRouter()
+	server.loadRouter()
 
-	return app
+	return server
 }
 
-func (a *App) Start(ctx context.Context) error {
+func (s *Server) Start(ctx context.Context) error {
 	server := &http.Server{
 		Addr:    ":" + port,
-		Handler: a.router,
+		Handler: s.router,
 	}
 
-	err := a.db.Ping(ctx)
+	err := s.db.Ping(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to connect to db: %w", err)
 	}
 
 	// TODO: setup migrations for table creation
-	err = a.createTables()
+	err = s.createTables()
 	if err != nil {
 		return fmt.Errorf("failed to create table: %w", err)
 	}
 
 	defer func() {
-		if err := a.db.Close(context.Background()); err != nil {
+		if err := s.db.Close(context.Background()); err != nil {
 			fmt.Println("failed to close db", err)
 		}
 	}()
@@ -86,9 +89,36 @@ func (a *App) Start(ctx context.Context) error {
 	}
 }
 
-func (a *App) createTables() error {
+func (s *Server) loadRouter() {
+	router := chi.NewRouter()
+
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Logger)
+
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	router.Route("/files", s.loadFileRoutes)
+
+	s.router = router
+}
+
+func (s *Server) loadFileRoutes(router chi.Router) {
+	handlers := &handlers.Handler{
+		DB: s.db,
+	}
+
+	router.Post("/upload-batch/{id}", handlers.UploadFiles)
+	router.Post("/delete-all", handlers.DeleteAllFiles)
+	router.Get("/download/{id}", handlers.DownloadFile)
+	router.Get("/get-proof/{id}", handlers.GetFileProof)
+	router.Post("/corrupt-file/{id}", handlers.CorruptFile)
+}
+
+func (s *Server) createTables() error {
 	dropTable := `DROP TABLE IF EXISTS files`
-	_, err := a.db.Exec(context.Background(), dropTable)
+	_, err := s.db.Exec(context.Background(), dropTable)
 	if err != nil {
 		return err
 	}
@@ -102,7 +132,7 @@ func (a *App) createTables() error {
 				original_hash BYTEA
 		)
 	`
-	_, err = a.db.Exec(context.Background(), createTableQuery)
+	_, err = s.db.Exec(context.Background(), createTableQuery)
 	if err != nil {
 		return err
 	}
