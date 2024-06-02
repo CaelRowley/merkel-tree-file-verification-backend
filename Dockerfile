@@ -6,9 +6,7 @@ COPY . .
 
 RUN go mod download && go mod verify
 
-WORKDIR /app/cmd
-
-RUN go build -o main .
+RUN  go build -o main cmd/main.go
 
 EXPOSE 8080
 

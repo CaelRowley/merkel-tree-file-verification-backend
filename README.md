@@ -21,9 +21,17 @@ This backend is written to be used in conjuction with the [Merkle Tree File Veri
 
 ## Getting Started
 
-After cloning the repository, you can run the backend server and locally using Docker Compose.
+You can run the backend locally with [go](https://go.dev/), [make](https://www.gnu.org/software/make/manual/make.html#Introduction) or [Docker](https://docs.docker.com/).
 
 **Note** The backend runs on port `8080` and the DB on port `5432` so make sure those ports are free if running locally.
+
+### Running with Make
+
+```bash
+make run
+```
+
+### Running with Docker Compose
 
 **Step 1:** Build the Docker Images (if needed)
 
